@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Log Terminal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .terminal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .terminal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(90deg, transparent 2px, rgba(0,255,0,0.03) 2px, rgba(0,255,0,0.03) 4px, transparent 4px),
+                linear-gradient(rgba(0,255,0,0.03) 1px, transparent 1px);
+            background-size: 3px 3px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .terminal::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                0deg,
+                transparent 50%,
+                rgba(0, 255, 0, 0.02) 50%,
+                rgba(0, 255, 0, 0.02) 51%,
+                transparent 51%
+            );
+            background-size: 100% 4px;
+            animation: scanlines 0.1s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
+        
+        .header {
+            color: #00ff00;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            z-index: 3;
+            position: relative;
+        }
+        
+        .log-container {
+            height: calc(100vh - 60px);
+            overflow: hidden;
+            position: relative;
+            z-index: 3;
+        }
+        
+        .log-line {
+            font-size: 12px;
+            margin-bottom: 2px;
+            opacity: 0;
+            animation: fadeIn 0.3s ease-out forwards;
+            white-space: nowrap;
+            text-shadow: 0 0 5px currentColor;
+        }
+        
+        .log-line.info {
+            color: #00ff00;
+        }
+        
+        .log-line.warning {
+            color: #ffaa00;
+        }
+        
+        .log-line.error {
+            color: #ff0040;
+            font-weight: 700;
+            text-shadow: 0 0 15px #ff0040;
+        }
+        
+        .log-line.critical {
+            color: #ff0000;
+            font-weight: 700;
+            text-shadow: 0 0 20px #ff0000;
+            animation: fadeIn 0.3s ease-out forwards, pulse 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+        }
+        
+        .glitch-overlay.active {
+            animation: glitch 0.6s ease-out;
+        }
+        
+        @keyframes glitch {
+            0% { 
+                opacity: 0;
+                transform: translate(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translate(-2px, 2px);
+                background: rgba(255, 0, 64, 0.1);
+                filter: hue-rotate(90deg);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(2px, -2px);
+                background: rgba(0, 255, 255, 0.1);
+                filter: hue-rotate(180deg);
+            }
+            30% {
+                opacity: 1;
+                transform: translate(-1px, 1px);
+                background: rgba(255, 255, 0, 0.1);
+                filter: hue-rotate(270deg);
+            }
+            40% {
+                opacity: 1;
+                transform: translate(1px, -1px);
+                background: rgba(255, 0, 255, 0.1);
+                filter: hue-rotate(360deg);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-3px, 3px);
+                background: rgba(255, 0, 0, 0.2);
+                filter: invert(1);
+            }
+            60% {
+                opacity: 1;
+                transform: translate(3px, -3px);
+                background: rgba(0, 255, 0, 0.1);
+                filter: contrast(2);
+            }
+            70% {
+                opacity: 1;
+                transform: translate(-1px, 1px);
+                background: rgba(0, 0, 255, 0.1);
+                filter: brightness(2);
+            }
+            80% {
+                opacity: 1;
+                transform: translate(1px, -1px);
+                background: rgba(255, 255, 255, 0.1);
+                filter: saturate(2);
+            }
+            90% {
+                opacity: 1;
+                transform: translate(-2px, 2px);
+                background: rgba(255, 0, 0, 0.1);
+                filter: blur(1px);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(0);
+                background: transparent;
+                filter: none;
+            }
+        }
+        
+        .screen-distortion {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+        }
+        
+        .screen-distortion.active {
+            animation: screenDistort 0.6s ease-out;
+        }
+        
+        @keyframes screenDistort {
+            0% { opacity: 0; }
+            10% { 
+                opacity: 1;
+                transform: scaleX(1.02) scaleY(0.98);
+                filter: contrast(1.5) brightness(1.2);
+            }
+            20% { 
+                opacity: 1;
+                transform: scaleX(0.98) scaleY(1.02);
+                filter: contrast(2) brightness(0.8);
+            }
+            30% { 
+                opacity: 1;
+                transform: scaleX(1.01) scaleY(0.99);
+                filter: contrast(1.8) brightness(1.1);
+            }
+            40% { 
+                opacity: 1;
+                transform: scaleX(0.99) scaleY(1.01);
+                filter: contrast(1.3) brightness(0.9);
+            }
+            50% { 
+                opacity: 1;
+                transform: scaleX(1.005) scaleY(0.995);
+                filter: contrast(1.6) brightness(1.05);
+            }
+            100% { 
+                opacity: 0;
+                transform: scaleX(1) scaleY(1);
+                filter: none;
+            }
+        }
+        
+        .cursor {
+            display: inline-block;
+            background: #00ff00;
+            width: 8px;
+            height: 14px;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="header">
+            █████ SERVER LOG MONITOR v2.1.3 █████<br>
+            Status: ACTIVE | Uptime: 247d 14h 32m | Load: 0.85<br>
+            ────────────────────────────────────────────────────────
+        </div>
+        <div class="log-container" id="logContainer">
+        </div>
+        <div class="cursor" id="cursor"></div>
+    </div>
+    
+    <div class="glitch-overlay" id="glitchOverlay"></div>
+    <div class="screen-distortion" id="screenDistortion"></div>
+    
+    <script>
+        class ServerLogGenerator {
+            constructor() {
+                this.logContainer = document.getElementById('logContainer');
+                this.glitchOverlay = document.getElementById('glitchOverlay');
+                this.screenDistortion = document.getElementById('screenDistortion');
+                this.maxLines = 50;
+                this.logSpeed = 800;
+                this.errorChance = 0.15;
+                this.criticalChance = 0.05;
+                
+                this.logTemplates = {
+                    info: [
+                        "[INFO] Database connection established successfully",
+                        "[INFO] User authentication completed for session {id}",
+                        "[INFO] Cache cleared successfully - {size}MB freed",
+                        "[INFO] Backup process initiated at {time}",
+                        "[INFO] API request processed in {ms}ms",
+                        "[INFO] SSL certificate validated successfully",
+                        "[INFO] Memory usage: {percent}% ({used}MB/{total}MB)",
+                        "[INFO] Network throughput: {speed}Mbps",
+                        "[INFO] Service health check passed",
+                        "[INFO] Log rotation completed successfully",
+                        "[INFO] Configuration reloaded from config.json",
+                        "[INFO] Worker process #{id} spawned",
+                        "[INFO] Scheduled task 'cleanup' executed",
+                        "[INFO] Load balancer updated with new backend",
+                        "[INFO] Session cleanup removed {count} expired sessions",
+                        "[INFO] Monitoring agent heartbeat received",
+                        "[INFO] CDN cache hit ratio: {percent}%",
+                        "[INFO] Database query optimized - execution time reduced by {percent}%"
+                    ],
+                    warning: [
+                        "[WARNING] High memory usage detected: {percent}%",
+                        "[WARNING] Connection timeout for external service",
+                        "[WARNING] Disk space low on partition /var/log",
+                        "[WARNING] Rate limit exceeded for IP {ip}",
+                        "[WARNING] SSL certificate expires in {days} days",
+                        "[WARNING] Unusual traffic pattern detected",
+                        "[WARNING] Database connection pool exhausted",
+                        "[WARNING] Cache miss rate above threshold: {percent}%",
+                        "[WARNING] Failed login attempts from {ip}",
+                        "[WARNING] Response time degradation detected",
+                        "[WARNING] Backup verification failed for {date}",
+                        "[WARNING] Load balancer backend {id} unresponsive"
+                    ],
+                    error: [
+                        "[ERROR] Failed to connect to database server",
+                        "[ERROR] Authentication failed for user {user}",
+                        "[ERROR] File system error: Permission denied",
+                        "[ERROR] Network timeout on critical service",
+                        "[ERROR] Memory allocation failed",
+                        "[ERROR] Invalid configuration parameter detected",
+                        "[ERROR] Service dependency unavailable",
+                        "[ERROR] Backup process failed with code {code}",
+                        "[ERROR] Rate limiting service crashed",
+                        "[ERROR] Cache server connection lost",
+                        "[ERROR] External API returned status 500",
+                        "[ERROR] Database deadlock detected and resolved"
+                    ],
+                    critical: [
+                        "[CRITICAL] SYSTEM BREACH DETECTED - INITIATING LOCKDOWN",
+                        "[CRITICAL] PRIMARY DATABASE SERVER OFFLINE",
+                        "[CRITICAL] KERNEL PANIC - SYSTEM UNSTABLE",
+                        "[CRITICAL] SECURITY VIOLATION - UNAUTHORIZED ACCESS",
+                        "[CRITICAL] COMPLETE SYSTEM FAILURE IMMINENT",
+                        "[CRITICAL] MEMORY CORRUPTION DETECTED",
+                        "[CRITICAL] NETWORK INFRASTRUCTURE COMPROMISED",
+                        "[CRITICAL] DATA INTEGRITY VERIFICATION FAILED",
+                        "[CRITICAL] EMERGENCY SHUTDOWN PROTOCOL ACTIVATED",
+                        "[CRITICAL] CASCADING FAILURE ACROSS ALL SERVICES"
+                    ]
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.generateLog();
+                setInterval(() => this.generateLog(), this.logSpeed);
+            }
+            
+            generateLog() {
+                const rand = Math.random();
+                let logType, template;
+                
+                if (rand < this.criticalChance) {
+                    logType = 'critical';
+                    this.triggerGlitch();
+                } else if (rand < this.errorChance) {
+                    logType = 'error';
+                    this.triggerGlitch();
+                } else if (rand < 0.3) {
+                    logType = 'warning';
+                } else {
+                    logType = 'info';
+                }
+                
+                const templates = this.logTemplates[logType];
+                template = templates[Math.floor(Math.random() * templates.length)];
+                
+                const logText = this.formatLogMessage(template);
+                this.addLogLine(logText, logType);
+                this.cleanupOldLogs();
+            }
+            
+            formatLogMessage(template) {
+                const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                const replacements = {
+                    '{time}': timestamp,
+                    '{id}': this.randomId(),
+                    '{ms}': Math.floor(Math.random() * 1000) + 1,
+                    '{percent}': Math.floor(Math.random() * 100),
+                    '{size}': Math.floor(Math.random() * 500) + 10,
+                    '{used}': Math.floor(Math.random() * 8000) + 1000,
+                    '{total}': 16384,
+                    '{speed}': (Math.random() * 100).toFixed(1),
+                    '{count}': Math.floor(Math.random() * 1000) + 1,
+                    '{ip}': this.randomIP(),
+                    '{days}': Math.floor(Math.random() * 30) + 1,
+                    '{user}': this.randomUser(),
+                    '{code}': Math.floor(Math.random() * 255),
+                    '{date}': new Date().toISOString().split('T')[0]
+                };
+                
+                let message = template;
+                Object.keys(replacements).forEach(key => {
+                    message = message.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), replacements[key]);
+                });
+                
+                return `${timestamp} ${message}`;
+            }
+            
+            randomId() {
+                return Math.random().toString(36).substr(2, 8).toUpperCase();
+            }
+            
+            randomIP() {
+                return Array.from({length: 4}, () => Math.floor(Math.random() * 256)).join('.');
+            }
+            
+            randomUser() {
+                const users = ['admin', 'root', 'user', 'guest', 'system', 'daemon', 'service'];
+                return users[Math.floor(Math.random() * users.length)];
+            }
+            
+            addLogLine(text, type) {
+                const logLine = document.createElement('div');
+                logLine.className = `log-line ${type}`;
+                logLine.textContent = text;
+                
+                this.logContainer.appendChild(logLine);
+                this.logContainer.scrollTop = this.logContainer.scrollHeight;
+            }
+            
+            cleanupOldLogs() {
+                const logs = this.logContainer.querySelectorAll('.log-line');
+                if (logs.length > this.maxLines) {
+                    for (let i = 0; i < logs.length - this.maxLines; i++) {
+                        logs[i].remove();
+                    }
+                }
+            }
+            
+            triggerGlitch() {
+                // Screen distortion effect
+                this.screenDistortion.classList.add('active');
+                setTimeout(() => {
+                    this.screenDistortion.classList.remove('active');
+                }, 600);
+                
+                // Glitch overlay effect
+                setTimeout(() => {
+                    this.glitchOverlay.classList.add('active');
+                    setTimeout(() => {
+                        this.glitchOverlay.classList.remove('active');
+                    }, 600);
+                }, 100);
+                
+                // Temporary speed increase
+                const originalSpeed = this.logSpeed;
+                this.logSpeed = 200;
+                setTimeout(() => {
+                    this.logSpeed = originalSpeed;
+                }, 2000);
+            }
+        }
+        
+        // Initialize the server log generator
+        window.addEventListener('load', () => {
+            new ServerLogGenerator();
+        });
+    </script>
+</body>
+</html>
