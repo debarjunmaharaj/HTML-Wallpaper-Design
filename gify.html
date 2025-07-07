@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Circuit Board Heartbeat</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        #background-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #bg-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures the image covers the screen without distortion */
+            filter: brightness(0.9) saturate(1.5); /* Darken the image and punch up the colors */
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2; /* Canvas sits on top of the background */
+        }
+    </style>
+</head>
+<body>
+    <div id="background-container">
+        <!-- Using a high-res, detailed image is key for this effect -->
+        <img id="bg-image" src="https://www.gifcen.com/wp-content/uploads/2022/01/wallpaper-gif-9.gif" alt="Circuit Board">
+    </div>
+    <canvas id="trace-canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('trace-canvas');
+        const ctx = canvas.getContext('2d');
+        const bgImage = document.getElementById('bg-image');
+
+        let nodes = [];
+        let pulses = [];
+        let cpuNode;
+
+        // --- CONFIGURATION ---
+        const PULSE_SPEED = 0.015; // Speed of the pulse along a path (percentage per frame)
+        const PULSE_COLOR_IN = "#00ffff"; // Cyan for pulses traveling to the CPU
+        const PULSE_COLOR_OUT = "#ff9933"; // Amber for pulses traveling away
+        const CPU_FLASH_COLOR = "#ffffff";
+        const HEARTBEAT_INTERVAL = 4000; // ms between heartbeats
+
+        // Pulse class to manage individual pulses of light
+        class Pulse {
+            constructor(startNode, endNode, color) {
+                this.startNode = startNode;
+                this.endNode = endNode;
+                this.color = color;
+                this.progress = 0; // 0 to 1
+                this.currentPos = { x: startNode.x, y: startNode.y };
+            }
+
+            update() {
+                this.progress += PULSE_SPEED;
+                if (this.progress > 1) {
+                    this.progress = 1;
+                }
+
+                // Linear interpolation to find the position between two nodes
+                this.currentPos.x = this.startNode.x + (this.endNode.x - this.startNode.x) * this.progress;
+                this.currentPos.y = this.startNode.y + (this.endNode.y - this.startNode.y) * this.progress;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.currentPos.x, this.currentPos.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 15;
+                ctx.fill();
+            }
+
+            isFinished() {
+                return this.progress >= 1;
+            }
+        }
+
+        // --- SETUP AND INITIALIZATION ---
+
+        function setupCoordinates() {
+            // Wait for the image to load to get its dimensions
+            const imgRect = bgImage.getBoundingClientRect();
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // These coordinates are defined in relative terms (0 to 1)
+            // This makes them independent of screen size.
+            // We'll define a few paths leading to a central CPU.
+            const relativeNodes = {
+                // Central CPU
+                cpu: { x: 0.5, y: 0.5 },
+                // Entry/Exit points
+                topLeft: { x: 0.15, y: 0.1 },
+                topRight: { x: 0.85, y: 0.15 },
+                bottomLeft: { x: 0.2, y: 0.9 },
+                bottomRight: { x: 0.8, y: 0.85 },
+                midLeft: { x: 0.05, y: 0.55 },
+                midRight: { x: 0.95, y: 0.45 },
+                // Intermediate points to create more interesting paths
+                path1: { x: 0.3, y: 0.3 },
+                path2: { x: 0.7, y: 0.35 },
+                path3: { x: 0.35, y: 0.75 },
+                path4: { x: 0.65, y: 0.7 },
+            };
+
+            // Convert relative coordinates to absolute pixel coordinates
+            nodes = {};
+            for (const key in relativeNodes) {
+                nodes[key] = {
+                    x: relativeNodes[key].x * canvas.width,
+                    y: relativeNodes[key].y * canvas.height,
+                    connections: []
+                };
+            }
+            
+            // Define the connections to form paths
+            // Path: topLeft -> path1 -> cpu
+            nodes.topLeft.connections.push(nodes.path1);
+            nodes.path1.connections.push(nodes.cpu);
+
+            // Path: topRight -> path2 -> cpu
+            nodes.topRight.connections.push(nodes.path2);
+            nodes.path2.connections.push(nodes.cpu);
+
+            // Path: bottomLeft -> path3 -> cpu
+            nodes.bottomLeft.connections.push(nodes.path3);
+            nodes.path3.connections.push(nodes.cpu);
+
+            // Path: midRight -> path4 -> cpu
+            nodes.midRight.connections.push(nodes.path4);
+            nodes.path4.connections.push(nodes.cpu);
+
+            // Direct paths
+            nodes.midLeft.connections.push(nodes.cpu);
+            nodes.bottomRight.connections.push(nodes.cpu);
+
+            cpuNode = nodes.cpu;
+        }
+
+        // --- ANIMATION LOGIC ---
+
+        let lastTimestamp = 0;
+        function animate(timestamp) {
+            // Clear canvas for redrawing
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.shadowBlur = 0; // Reset shadow blur
+
+            // Update and draw all active pulses
+            for (let i = pulses.length - 1; i >= 0; i--) {
+                pulses[i].update();
+                pulses[i].draw();
+
+                // Remove pulses that have reached their destination
+                if (pulses[i].isFinished()) {
+                    pulses.splice(i, 1);
+                }
+            }
+
+            // Request the next frame
+            requestAnimationFrame(animate);
+        }
+
+        function triggerInwardPulses() {
+            // Find all nodes that are not the CPU
+            const peripheralNodes = Object.values(nodes).filter(n => n !== cpuNode);
+            
+            // Randomly select a few nodes to start a pulse from
+            peripheralNodes.sort(() => 0.5 - Math.random());
+            const selectedNodes = peripheralNodes.slice(0, Math.floor(Math.random() * 3) + 2); // 2 to 4 pulses
+
+            selectedNodes.forEach(node => {
+                // This logic assumes a simple path: start -> intermediate -> cpu
+                // For more complex paths, a proper pathfinding algorithm (like Dijkstra's) would be needed.
+                let startNode = node;
+                let nextNode = startNode.connections[0];
+                if(startNode && nextNode) {
+                    pulses.push(new Pulse(startNode, nextNode, PULSE_COLOR_IN));
+                    // Chain the next pulse
+                    let interval = setInterval(() => {
+                        if (pulses.find(p => p.startNode === startNode && p.endNode === nextNode && p.isFinished())) {
+                             let finalNode = nextNode.connections[0];
+                             if(finalNode){
+                                pulses.push(new Pulse(nextNode, finalNode, PULSE_COLOR_IN));
+                             }
+                             clearInterval(interval);
+                        }
+                    }, 100);
+                }
+            });
+        }
+        
+        function triggerOutwardPulses() {
+            const peripheralNodes = Object.values(nodes).filter(n => n !== cpuNode);
+            peripheralNodes.sort(() => 0.5 - Math.random());
+            const selectedNodes = peripheralNodes.slice(0, Math.floor(Math.random() * 4) + 3); // 3 to 6 pulses
+
+            selectedNodes.forEach(targetNode => {
+                 // To send outward, we need to find the node that connects TO the targetNode
+                 let intermediateNode = Object.values(nodes).find(n => n.connections.includes(targetNode));
+                 if(intermediateNode){
+                     // Path is cpu -> intermediate -> target
+                     pulses.push(new Pulse(cpuNode, intermediateNode, PULSE_COLOR_OUT));
+                     let interval = setInterval(() => {
+                         if (pulses.find(p => p.startNode === cpuNode && p.endNode === intermediateNode && p.isFinished())) {
+                              pulses.push(new Pulse(intermediateNode, targetNode, PULSE_COLOR_OUT));
+                              clearInterval(interval);
+                         }
+                     }, 100);
+                 } else { // Handle direct connections
+                     if(targetNode.connections.includes(cpuNode)){
+                         pulses.push(new Pulse(cpuNode, targetNode, PULSE_COLOR_OUT));
+                     }
+                 }
+            });
+        }
+
+
+        function flashCPU() {
+            let flashes = 0;
+            const flashInterval = setInterval(() => {
+                if (flashes % 2 === 0) {
+                    // Flash ON
+                    ctx.beginPath();
+                    ctx.arc(cpuNode.x, cpuNode.y, 25, 0, Math.PI * 2);
+                    ctx.fillStyle = CPU_FLASH_COLOR;
+                    ctx.shadowColor = CPU_FLASH_COLOR;
+                    ctx.shadowBlur = 50;
+                    ctx.fill();
+                }
+                flashes++;
+                if (flashes > 3) {
+                    clearInterval(flashInterval);
+                }
+            }, 80);
+        }
+
+        function heartbeatSequence() {
+            // Step 1: Send pulses IN
+            triggerInwardPulses();
+
+            // Step 2: Wait for pulses to arrive, then flash CPU
+            // This is a simplified timer. A more robust solution would check if pulses are finished.
+            setTimeout(() => {
+                flashCPU();
+                
+                // Step 3: After the flash, send pulses OUT
+                setTimeout(triggerOutwardPulses, 200);
+
+            }, HEARTBEAT_INTERVAL / 2);
+        }
+
+        // --- EVENT LISTENERS ---
+        window.addEventListener('resize', setupCoordinates);
+
+        // Make sure to run setup after the image has loaded to get correct dimensions
+        bgImage.onload = () => {
+            setupCoordinates();
+            animate();
+            
+            // Start the main heartbeat loop
+            heartbeatSequence(); // Start the first one immediately
+            setInterval(heartbeatSequence, HEARTBEAT_INTERVAL);
+        };
+        
+        // Handle case where image is already cached and 'onload' doesn't fire
+        if (bgImage.complete) {
+            bgImage.onload();
+        }
+
+    </script>
+</body>
+</html>
