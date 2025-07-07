@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Board Traces Wallpaper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+        }
+
+        .circuit-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(0, 255, 100, 0.1) 0%, transparent 30%),
+                radial-gradient(circle at 80% 80%, rgba(0, 150, 255, 0.1) 0%, transparent 30%),
+                radial-gradient(circle at 50% 10%, rgba(255, 0, 150, 0.05) 0%, transparent 40%),
+                linear-gradient(45deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            animation: backgroundPulse 6s ease-in-out infinite;
+        }
+
+        @keyframes backgroundPulse {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        .pcb-base {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(0deg, transparent 24%, rgba(0, 255, 100, 0.1) 25%, rgba(0, 255, 100, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 255, 100, 0.1) 75%, rgba(0, 255, 100, 0.1) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 255, 100, 0.1) 25%, rgba(0, 255, 100, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 255, 100, 0.1) 75%, rgba(0, 255, 100, 0.1) 76%, transparent 77%, transparent);
+            background-size: 50px 50px;
+            opacity: 0.3;
+        }
+
+        .trace {
+            position: absolute;
+            background: #00ff64;
+            border-radius: 1px;
+            box-shadow: 0 0 4px rgba(0, 255, 100, 0.6);
+            opacity: 0.8;
+        }
+
+        .trace-horizontal {
+            height: 2px;
+            width: 150px;
+        }
+
+        .trace-vertical {
+            width: 2px;
+            height: 150px;
+        }
+
+        .trace-diagonal {
+            height: 2px;
+            width: 100px;
+            transform-origin: left center;
+        }
+
+        .cpu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #333, #555, #333);
+            border: 2px solid #00ff64;
+            border-radius: 8px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 100, 0.8),
+                inset 0 0 10px rgba(0, 255, 100, 0.3);
+            animation: cpuHeartbeat 2s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        .cpu::before {
+            content: 'CPU';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff64;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 255, 100, 0.8);
+        }
+
+        .cpu::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 1px solid rgba(0, 255, 100, 0.4);
+            border-radius: 12px;
+            animation: cpuAura 2s ease-in-out infinite;
+        }
+
+        @keyframes cpuHeartbeat {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 
+                    0 0 20px rgba(0, 255, 100, 0.8),
+                    inset 0 0 10px rgba(0, 255, 100, 0.3);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.1);
+                box-shadow: 
+                    0 0 40px rgba(0, 255, 100, 1),
+                    0 0 60px rgba(0, 255, 100, 0.6),
+                    inset 0 0 20px rgba(0, 255, 100, 0.5);
+            }
+        }
+
+        @keyframes cpuAura {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.4;
+            }
+            50% { 
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+        }
+
+        .pulse {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #00ffff 0%, #0080ff 50%, transparent 70%);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            animation: pulseMove 3s linear infinite;
+        }
+
+        @keyframes pulseMove {
+            0% { 
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            10% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            90% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(0.5);
+                opacity: 0;
+            }
+        }
+
+        .component {
+            position: absolute;
+            background: #444;
+            border: 1px solid #666;
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(0, 255, 100, 0.3);
+        }
+
+        .resistor {
+            width: 30px;
+            height: 8px;
+            background: linear-gradient(90deg, #8B4513, #DEB887, #8B4513);
+            border: 1px solid #654321;
+        }
+
+        .capacitor {
+            width: 12px;
+            height: 20px;
+            background: linear-gradient(180deg, #2F4F4F, #708090, #2F4F4F);
+            border: 1px solid #556B2F;
+        }
+
+        .ic-chip {
+            width: 40px;
+            height: 15px;
+            background: linear-gradient(90deg, #1C1C1C, #2F2F2F, #1C1C1C);
+            border: 1px solid #444;
+            position: relative;
+        }
+
+        .ic-chip::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -2px;
+            right: -2px;
+            height: 1px;
+            background: #666;
+        }
+
+        .connection-point {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #silver;
+            border-radius: 50%;
+            box-shadow: 0 0 3px rgba(192, 192, 192, 0.8);
+        }
+
+        .via {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #gold;
+            border-radius: 50%;
+            box-shadow: 0 0 2px rgba(255, 215, 0, 0.8);
+            animation: viaGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes viaGlow {
+            0% { box-shadow: 0 0 2px rgba(255, 215, 0, 0.8); }
+            100% { box-shadow: 0 0 8px rgba(255, 215, 0, 1); }
+        }
+
+        .text-label {
+            position: absolute;
+            color: #00ff64;
+            font-size: 8px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 3px rgba(0, 255, 100, 0.6);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .cpu {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .trace-horizontal {
+                width: 100px;
+            }
+            
+            .trace-vertical {
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="circuit-container">
+        <div class="pcb-base"></div>
+        
+        <!-- Central CPU -->
+        <div class="cpu"></div>
+        
+        <!-- Text Labels -->
+        <div class="text-label" style="top: 10px; left: 10px;">PCB-001</div>
+        <div class="text-label" style="top: 10px; right: 10px;">REV-3.2</div>
+        <div class="text-label" style="bottom: 10px; left: 10px;">5V</div>
+        <div class="text-label" style="bottom: 10px; right: 10px;">GND</div>
+    </div>
+
+    <script>
+        class CircuitBoard {
+            constructor() {
+                this.container = document.querySelector('.circuit-container');
+                this.cpu = document.querySelector('.cpu');
+                this.traces = [];
+                this.pulses = [];
+                this.components = [];
+                this.init();
+            }
+
+            init() {
+                this.createTraces();
+                this.createComponents();
+                this.startPulseGeneration();
+            }
+
+            createTraces() {
+                const cpuRect = this.cpu.getBoundingClientRect();
+                const cpuCenterX = cpuRect.left + cpuRect.width / 2;
+                const cpuCenterY = cpuRect.top + cpuRect.height / 2;
+
+                // Create main traces from CPU
+                const traceConfigs = [
+                    // Horizontal traces
+                    { x: cpuCenterX - 200, y: cpuCenterY - 100, width: 150, height: 2, class: 'trace-horizontal' },
+                    { x: cpuCenterX + 50, y: cpuCenterY - 100, width: 150, height: 2, class: 'trace-horizontal' },
+                    { x: cpuCenterX - 200, y: cpuCenterY + 100, width: 150, height: 2, class: 'trace-horizontal' },
+                    { x: cpuCenterX + 50, y: cpuCenterY + 100, width: 150, height: 2, class: 'trace-horizontal' },
+                    
+                    // Vertical traces
+                    { x: cpuCenterX - 150, y: cpuCenterY - 100, width: 2, height: 150, class: 'trace-vertical' },
+                    { x: cpuCenterX + 150, y: cpuCenterY - 100, width: 2, height: 150, class: 'trace-vertical' },
+                    { x: cpuCenterX - 50, y: cpuCenterY - 200, width: 2, height: 150, class: 'trace-vertical' },
+                    { x: cpuCenterX + 50, y: cpuCenterY + 50, width: 2, height: 150, class: 'trace-vertical' },
+                    
+                    // Connecting traces to CPU
+                    { x: cpuCenterX - 40, y: cpuCenterY - 1, width: 40, height: 2, class: 'trace-horizontal' },
+                    { x: cpuCenterX + 40, y: cpuCenterY - 1, width: 40, height: 2, class: 'trace-horizontal' },
+                    { x: cpuCenterX - 1, y: cpuCenterY - 40, width: 2, height: 40, class: 'trace-vertical' },
+                    { x: cpuCenterX - 1, y: cpuCenterY + 40, width: 2, height: 40, class: 'trace-vertical' },
+                ];
+
+                traceConfigs.forEach(config => {
+                    const trace = document.createElement('div');
+                    trace.className = `trace ${config.class}`;
+                    trace.style.left = config.x + 'px';
+                    trace.style.top = config.y + 'px';
+                    trace.style.width = config.width + 'px';
+                    trace.style.height = config.height + 'px';
+                    this.container.appendChild(trace);
+                    this.traces.push({ element: trace, config });
+                });
+            }
+
+            createComponents() {
+                const positions = [
+                    { x: 200, y: 150, type: 'resistor' },
+                    { x: 300, y: 200, type: 'capacitor' },
+                    { x: 150, y: 300, type: 'ic-chip' },
+                    { x: 400, y: 180, type: 'resistor' },
+                    { x: 500, y: 250, type: 'capacitor' },
+                    { x: 100, y: 400, type: 'ic-chip' },
+                    { x: 600, y: 150, type: 'resistor' },
+                    { x: 350, y: 450, type: 'capacitor' },
+                ];
+
+                positions.forEach(pos => {
+                    const component = document.createElement('div');
+                    component.className = `component ${pos.type}`;
+                    component.style.left = pos.x + 'px';
+                    component.style.top = pos.y + 'px';
+                    this.container.appendChild(component);
+                    this.components.push(component);
+                });
+
+                // Add connection points and vias
+                for (let i = 0; i < 20; i++) {
+                    const via = document.createElement('div');
+                    via.className = 'via';
+                    via.style.left = Math.random() * (window.innerWidth - 100) + 50 + 'px';
+                    via.style.top = Math.random() * (window.innerHeight - 100) + 50 + 'px';
+                    this.container.appendChild(via);
+                }
+
+                for (let i = 0; i < 15; i++) {
+                    const point = document.createElement('div');
+                    point.className = 'connection-point';
+                    point.style.left = Math.random() * (window.innerWidth - 100) + 50 + 'px';
+                    point.style.top = Math.random() * (window.innerHeight - 100) + 50 + 'px';
+                    this.container.appendChild(point);
+                }
+            }
+
+            createPulse(startX, startY, endX, endY, delay = 0) {
+                setTimeout(() => {
+                    const pulse = document.createElement('div');
+                    pulse.className = 'pulse';
+                    pulse.style.left = startX + 'px';
+                    pulse.style.top = startY + 'px';
+                    this.container.appendChild(pulse);
+
+                    const deltaX = endX - startX;
+                    const deltaY = endY - startY;
+                    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                    const duration = Math.max(1000, distance * 2); // Minimum 1s, scale with distance
+
+                    pulse.style.transition = `all ${duration}ms linear`;
+                    pulse.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+                    setTimeout(() => {
+                        if (pulse.parentNode) {
+                            pulse.parentNode.removeChild(pulse);
+                        }
+                    }, duration);
+                }, delay);
+            }
+
+            startPulseGeneration() {
+                const cpuRect = this.cpu.getBoundingClientRect();
+                const cpuCenterX = cpuRect.left + cpuRect.width / 2;
+                const cpuCenterY = cpuRect.top + cpuRect.height / 2;
+
+                setInterval(() => {
+                    // CPU heartbeat - send pulses outward
+                    const directions = [
+                        { x: cpuCenterX - 200, y: cpuCenterY },
+                        { x: cpuCenterX + 200, y: cpuCenterY },
+                        { x: cpuCenterX, y: cpuCenterY - 200 },
+                        { x: cpuCenterX, y: cpuCenterY + 200 },
+                        { x: cpuCenterX - 150, y: cpuCenterY - 150 },
+                        { x: cpuCenterX + 150, y: cpuCenterY - 150 },
+                        { x: cpuCenterX - 150, y: cpuCenterY + 150 },
+                        { x: cpuCenterX + 150, y: cpuCenterY + 150 },
+                    ];
+
+                    directions.forEach((dir, index) => {
+                        this.createPulse(cpuCenterX, cpuCenterY, dir.x, dir.y, index * 100);
+                    });
+                }, 2000);
+
+                // Random pulses between components
+                setInterval(() => {
+                    const components = document.querySelectorAll('.component, .via, .connection-point');
+                    if (components.length > 1) {
+                        const start = components[Math.floor(Math.random() * components.length)];
+                        const end = components[Math.floor(Math.random() * components.length)];
+                        
+                        if (start !== end) {
+                            const startRect = start.getBoundingClientRect();
+                            const endRect = end.getBoundingClientRect();
+                            
+                            this.createPulse(
+                                startRect.left + startRect.width / 2,
+                                startRect.top + startRect.height / 2,
+                                endRect.left + endRect.width / 2,
+                                endRect.top + endRect.height / 2
+                            );
+                        }
+                    }
+                }, 1500);
+
+                // Convergent pulses toward CPU
+                setInterval(() => {
+                    const edgePoints = [
+                        { x: 50, y: Math.random() * window.innerHeight },
+                        { x: window.innerWidth - 50, y: Math.random() * window.innerHeight },
+                        { x: Math.random() * window.innerWidth, y: 50 },
+                        { x: Math.random() * window.innerWidth, y: window.innerHeight - 50 },
+                    ];
+
+                    edgePoints.forEach((point, index) => {
+                        this.createPulse(point.x, point.y, cpuCenterX, cpuCenterY, index * 200);
+                    });
+                }, 3000);
+            }
+        }
+
+        // Initialize the circuit board
+        document.addEventListener('DOMContentLoaded', () => {
+            new CircuitBoard();
+        });
+
+        // Add mouse interaction
+        document.addEventListener('mousemove', (e) => {
+            const cpu = document.querySelector('.cpu');
+            const rect = cpu.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const distance = Math.sqrt((e.clientX - centerX) ** 2 + (e.clientY - centerY) ** 2);
+            
+            if (distance < 100) {
+                cpu.style.animationDuration = '0.5s';
+            } else {
+                cpu.style.animationDuration = '2s';
+            }
+        });
+
+        // Click to generate burst of pulses
+        document.addEventListener('click', (e) => {
+            const cpu = document.querySelector('.cpu');
+            const rect = cpu.getBoundingClientRect();
+            const cpuCenterX = rect.left + rect.width / 2;
+            const cpuCenterY = rect.top + rect.height / 2;
+            
+            // Create burst of pulses from click point to CPU
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const pulse = document.createElement('div');
+                    pulse.className = 'pulse';
+                    pulse.style.left = e.clientX + 'px';
+                    pulse.style.top = e.clientY + 'px';
+                    pulse.style.background = 'radial-gradient(circle, #ff00ff 0%, #ff0080 50%, transparent 70%)';
+                    document.body.appendChild(pulse);
+
+                    const deltaX = cpuCenterX - e.clientX;
+                    const deltaY = cpuCenterY - e.clientY;
+                    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                    const duration = Math.max(500, distance);
+
+                    pulse.style.transition = `all ${duration}ms ease-out`;
+                    pulse.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+                    setTimeout(() => {
+                        if (pulse.parentNode) {
+                            pulse.parentNode.removeChild(pulse);
+                        }
+                    }, duration);
+                }, i * 100);
+            }
+        });
+    </script>
+</body>
+</html>
