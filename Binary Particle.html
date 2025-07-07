@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goku's Living Kamehameha</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #010410;
+            height: 100%;
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1rem;
+            text-shadow: 0 0 5px #00aaff;
+            pointer-events: none; /* So it doesn't block mouse events on the canvas */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="goku-canvas"></canvas>
+    <div class="instructions">Move mouse to gather energy. Click to fire.</div>
+
+    <script>
+        const canvas = document.getElementById('goku-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        let mouse = { x: width / 2, y: height / 2 };
+        
+        let auraParticles = [];
+        let beamParticles = [];
+        let stars = [];
+        let isFiring = false;
+        let screenShake = 0;
+
+        // --- PARTICLE CLASS ---
+        class Particle {
+            constructor(x, y, size, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+
+            update() {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.02;
+            }
+        }
+
+        // --- GOKU SILHOUETTE ---
+        function drawGoku() {
+            // A stylized silhouette of Goku in the Kamehameha pose
+            // This is drawn using path coordinates
+            const gokuX = width * 0.2;
+            const gokuY = height * 0.75;
+            
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            // Head and Hair
+            ctx.moveTo(gokuX, gokuY - 200);
+            ctx.lineTo(gokuX + 50, gokuY - 250);
+            ctx.lineTo(gokuX + 30, gokuY - 220);
+            ctx.lineTo(gokuX + 80, gokuY - 280);
+            ctx.lineTo(gokuX + 60, gokuY - 250);
+            ctx.lineTo(gokuX + 110, gokuY - 290);
+            ctx.lineTo(gokuX + 80, gokuY - 260);
+            ctx.lineTo(gokuX + 130, gokuY - 260);
+            ctx.lineTo(gokuX + 90, gokuY - 230);
+            ctx.lineTo(gokuX + 110, gokuY - 210);
+            ctx.lineTo(gokuX + 60, gokuY - 190);
+             // Torso and arm
+            ctx.lineTo(gokuX + 40, gokuY - 150);
+            ctx.lineTo(gokuX + 80, gokuY - 140); 
+            ctx.lineTo(gokuX + 70, gokuY - 100); // Hands area
+            ctx.lineTo(gokuX + 100, gokuY - 110);
+            ctx.lineTo(gokuX + 90, gokuY - 150);
+            ctx.lineTo(gokuX + 30, gokuY - 160);
+            ctx.lineTo(gokuX, gokuY - 100);
+            // Legs
+            ctx.lineTo(gokuX - 30, gokuY - 50);
+            ctx.lineTo(gokuX - 80, gokuY);
+            ctx.lineTo(gokuX - 40, gokuY);
+            ctx.lineTo(gokuX - 10, gokuY - 40);
+            ctx.lineTo(gokuX + 20, gokuY);
+            ctx.lineTo(gokuX + 50, gokuY - 50);
+            ctx.lineTo(gokuX, gokuY - 90);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // --- ENERGY & BEAM LOGIC ---
+        function handleAura() {
+            const chargePointX = width * 0.2 + 80;
+            const chargePointY = height * 0.75 - 120;
+            
+            // Add new aura particles
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 50 + 80;
+            const startX = mouse.x + Math.cos(angle) * radius;
+            const startY = mouse.y + Math.sin(angle) * radius;
+
+            const angleToCharge = Math.atan2(chargePointY - startY, chargePointX - startX);
+            const speed = Math.random() * 2 + 1;
+
+            const velocity = {
+                x: Math.cos(angleToCharge) * speed,
+                y: Math.sin(angleToCharge) * speed
+            };
+            
+            auraParticles.push(new Particle(startX, startY, Math.random() * 2 + 1, 'rgba(137, 207, 240, 0.7)', velocity));
+
+            // Update and draw aura
+            for (let i = auraParticles.length - 1; i >= 0; i--) {
+                const p = auraParticles[i];
+                p.update();
+                p.draw();
+                if (p.alpha <= 0) {
+                    auraParticles.splice(i, 1);
+                }
+            }
+        }
+        
+        function fireBeam() {
+            isFiring = true;
+            screenShake = 15;
+            const beamOriginX = width * 0.2 + 90;
+            const beamOriginY = height * 0.75 - 125;
+
+            for (let i = 0; i < 500; i++) {
+                const angle = (Math.random() - 0.5) * 0.2; // Narrow cone
+                const speed = Math.random() * 20 + 30;
+                const velocity = {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                };
+                
+                const color = `hsl(${Math.random() * 40 + 190}, 100%, ${Math.random() * 50 + 50}%)`; // Shades of blue/cyan
+                beamParticles.push(new Particle(beamOriginX, beamOriginY, Math.random() * 5 + 1, color, velocity));
+            }
+            
+            setTimeout(() => isFiring = false, 500); // Beam lasts for 500ms
+        }
+        
+        function handleBeam() {
+             for (let i = beamParticles.length - 1; i >= 0; i--) {
+                const p = beamParticles[i];
+                p.update();
+                p.draw();
+                if (p.x > width || p.y > height || p.y < 0 || p.alpha <= 0) {
+                    beamParticles.splice(i, 1);
+                }
+            }
+        }
+        
+        // --- BACKGROUND STARS ---
+        function createStars() {
+            for(let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: Math.random() * 1.5,
+                    alpha: Math.random()
+                });
+            }
+        }
+
+        function drawStars() {
+            for(const star of stars) {
+                ctx.globalAlpha = star.alpha;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fill();
+                star.x -= 0.1; // Slow drift
+                if(star.x < 0) star.x = width;
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            // Fading trail effect
+            ctx.fillStyle = 'rgba(1, 4, 16, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+            
+            if (screenShake > 0) {
+                ctx.save();
+                const dx = (Math.random() - 0.5) * screenShake;
+                const dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+                screenShake -= 1;
+            }
+
+            drawStars();
+            drawGoku();
+            
+            if (!isFiring) {
+                handleAura();
+            }
+            if (beamParticles.length > 0) {
+                handleBeam();
+            }
+
+            if (screenShake > 0) {
+                ctx.restore();
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        // --- EVENT LISTENERS ---
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            stars = []; // Reset stars on resize
+            createStars();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        
+        window.addEventListener('click', () => {
+            if (!isFiring) {
+                fireBeam();
+            }
+        });
+
+        // --- INITIALIZATION ---
+        createStars();
+        animate();
+
+    </script>
+</body>
+</html>
