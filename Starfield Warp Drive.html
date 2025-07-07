@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield Warp Drive</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: radial-gradient(circle at center, #0a0a20 0%, #000000 100%);
+            overflow: hidden;
+            font-family: 'Orbitron', monospace;
+            height: 100vh;
+            position: relative;
+        }
+        
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .warp-button {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 136, 0.5),
+                inset 0 0 20px rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .warp-button:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 40px rgba(0, 255, 136, 0.8),
+                inset 0 0 30px rgba(255, 255, 255, 0.2);
+        }
+        
+        .warp-button:active {
+            transform: scale(0.95);
+        }
+        
+        .warp-button.engaged {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .speed-display {
+            color: #00ff88;
+            font-size: 18px;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
+            letter-spacing: 1px;
+        }
+        
+        .instructions {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff88;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0.8;
+            z-index: 10;
+        }
+        
+        .lens-flare {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, 
+                rgba(255, 255, 255, 0.8) 0%,
+                rgba(0, 255, 255, 0.6) 20%,
+                rgba(0, 150, 255, 0.4) 40%,
+                rgba(0, 100, 255, 0.2) 60%,
+                transparent 80%
+            );
+            border-radius: 50%;
+            opacity: 0;
+            z-index: 5;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+        
+        .lens-flare.active {
+            opacity: 1;
+            animation: flare 2s ease-out;
+        }
+        
+        @keyframes flare {
+            0% {
+                transform: translate(-50%, -50%) scale(0.1);
+                opacity: 0;
+            }
+            20% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 1;
+            }
+            80% {
+                transform: translate(-50%, -50%) scale(4);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(6);
+                opacity: 0;
+            }
+        }
+        
+        .warp-rings {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .warp-rings.active {
+            opacity: 1;
+            animation: rings 2s ease-out;
+        }
+        
+        @keyframes rings {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0;
+            }
+            20% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(10);
+                opacity: 0;
+            }
+        }
+        
+        .ring {
+            position: absolute;
+            border: 2px solid rgba(0, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: ringExpand 2s ease-out infinite;
+        }
+        
+        .ring:nth-child(1) {
+            width: 100px;
+            height: 100px;
+            top: -50px;
+            left: -50px;
+            animation-delay: 0s;
+        }
+        
+        .ring:nth-child(2) {
+            width: 200px;
+            height: 200px;
+            top: -100px;
+            left: -100px;
+            animation-delay: 0.3s;
+        }
+        
+        .ring:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            top: -150px;
+            left: -150px;
+            animation-delay: 0.6s;
+        }
+        
+        @keyframes ringExpand {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+    
+    <div class="instructions">
+        Press SPACEBAR or click ENGAGE to activate warp drive
+    </div>
+    
+    <div class="controls">
+        <div class="speed-display" id="speedDisplay">
+            IMPULSE: 1.0x
+        </div>
+        <button class="warp-button" id="warpButton">
+            ENGAGE WARP
+        </button>
+    </div>
+    
+    <div class="lens-flare" id="lensFlare"></div>
+    
+    <div class="warp-rings" id="warpRings">
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+    </div>
+    
+    <script>
+        class StarfieldWarpDrive {
+            constructor() {
+                this.canvas = document.getElementById('starfield');
+                this.ctx = this.canvas.getContext('2d');
+                this.warpButton = document.getElementById('warpButton');
+                this.speedDisplay = document.getElementById('speedDisplay');
+                this.lensFlare = document.getElementById('lensFlare');
+                this.warpRings = document.getElementById('warpRings');
+                
+                this.stars = [];
+                this.numStars = 800;
+                this.warpEngaged = false;
+                this.warpSpeed = 1;
+                this.targetWarpSpeed = 1;
+                this.baseSpeed = 2;
+                this.warpDuration = 0;
+                this.maxWarpDuration = 120; // 2 seconds at 60fps
+                
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                this.createStars();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.centerX = this.canvas.width / 2;
+                this.centerY = this.canvas.height / 2;
+                this.maxDistance = Math.sqrt(this.centerX * this.centerX + this.centerY * this.centerY);
+            }
+            
+            createStars() {
+                this.stars = [];
+                for (let i = 0; i < this.numStars; i++) {
+                    this.stars.push(this.createStar());
+                }
+            }
+            
+            createStar() {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * this.maxDistance;
+                const speed = 0.5 + Math.random() * 1.5;
+                const size = Math.random() * 2 + 0.5;
+                
+                return {
+                    x: this.centerX + Math.cos(angle) * distance,
+                    y: this.centerY + Math.sin(angle) * distance,
+                    z: distance,
+                    angle: angle,
+                    speed: speed,
+                    size: size,
+                    brightness: Math.random() * 0.5 + 0.5
+                };
+            }
+            
+            setupEventListeners() {
+                this.warpButton.addEventListener('click', () => this.toggleWarp());
+                
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.toggleWarp();
+                    }
+                });
+            }
+            
+            toggleWarp() {
+                if (!this.warpEngaged) {
+                    this.engageWarp();
+                } else {
+                    this.disengageWarp();
+                }
+            }
+            
+            engageWarp() {
+                this.warpEngaged = true;
+                this.targetWarpSpeed = 15;
+                this.warpDuration = 0;
+                
+                this.warpButton.textContent = 'DISENGAGE WARP';
+                this.warpButton.classList.add('engaged');
+                
+                // Trigger visual effects
+                this.lensFlare.classList.add('active');
+                this.warpRings.classList.add('active');
+                
+                // Remove effects after animation
+                setTimeout(() => {
+                    this.lensFlare.classList.remove('active');
+                    this.warpRings.classList.remove('active');
+                }, 2000);
+            }
+            
+            disengageWarp() {
+                this.warpEngaged = false;
+                this.targetWarpSpeed = 1;
+                
+                this.warpButton.textContent = 'ENGAGE WARP';
+                this.warpButton.classList.remove('engaged');
+            }
+            
+            updateStars() {
+                // Smooth speed transition
+                if (this.warpSpeed < this.targetWarpSpeed) {
+                    this.warpSpeed += 0.3;
+                } else if (this.warpSpeed > this.targetWarpSpeed) {
+                    this.warpSpeed -= 0.2;
+                }
+                
+                // Update warp duration
+                if (this.warpEngaged) {
+                    this.warpDuration++;
+                    if (this.warpDuration > this.maxWarpDuration) {
+                        this.disengageWarp();
+                    }
+                }
+                
+                // Update speed display
+                const displaySpeed = this.warpSpeed.toFixed(1);
+                if (this.warpSpeed > 5) {
+                    this.speedDisplay.textContent = `WARP: ${displaySpeed}x`;
+                    this.speedDisplay.style.color = '#ff4444';
+                } else {
+                    this.speedDisplay.textContent = `IMPULSE: ${displaySpeed}x`;
+                    this.speedDisplay.style.color = '#00ff88';
+                }
+                
+                // Update stars
+                for (let i = 0; i < this.stars.length; i++) {
+                    const star = this.stars[i];
+                    const currentSpeed = this.baseSpeed * star.speed * this.warpSpeed;
+                    
+                    // Move star outward
+                    star.z -= currentSpeed;
+                    
+                    // Calculate position
+                    const factor = (this.maxDistance - star.z) / this.maxDistance;
+                    star.x = this.centerX + Math.cos(star.angle) * star.z;
+                    star.y = this.centerY + Math.sin(star.angle) * star.z;
+                    
+                    // Reset star if it goes off screen
+                    if (star.z <= 0 || 
+                        star.x < -50 || star.x > this.canvas.width + 50 || 
+                        star.y < -50 || star.y > this.canvas.height + 50) {
+                        this.stars[i] = this.createStar();
+                    }
+                }
+            }
+            
+            drawStars() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                for (const star of this.stars) {
+                    const factor = (this.maxDistance - star.z) / this.maxDistance;
+                    const size = star.size * factor * (0.5 + this.warpSpeed * 0.1);
+                    const brightness = star.brightness * factor;
+                    
+                    // Draw star trail during warp
+                    if (this.warpSpeed > 3) {
+                        const trailLength = Math.min(this.warpSpeed * 10, 100);
+                        const trailX = star.x + Math.cos(star.angle + Math.PI) * trailLength;
+                        const trailY = star.y + Math.sin(star.angle + Math.PI) * trailLength;
+                        
+                        const gradient = this.ctx.createLinearGradient(
+                            trailX, trailY, star.x, star.y
+                        );
+                        gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                        gradient.addColorStop(1, `rgba(255, 255, 255, ${brightness})`);
+                        
+                        this.ctx.strokeStyle = gradient;
+                        this.ctx.lineWidth = size * 0.5;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(trailX, trailY);
+                        this.ctx.lineTo(star.x, star.y);
+                        this.ctx.stroke();
+                    }
+                    
+                    // Draw star
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(star.x, star.y, size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Add glow effect for bright stars
+                    if (brightness > 0.7) {
+                        this.ctx.shadowBlur = size * 2;
+                        this.ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+                        this.ctx.beginPath();
+                        this.ctx.arc(star.x, star.y, size * 0.5, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            
+            animate() {
+                this.updateStars();
+                this.drawStars();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // Initialize the starfield
+        window.addEventListener('load', () => {
+            new StarfieldWarpDrive();
+        });
+    </script>
+</body>
+</html>
