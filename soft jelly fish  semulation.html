@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Jellyfish Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #00051a; /* Very dark deep blue */
+            cursor: none; /* Hide the default cursor */
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="jellyfish-canvas"></canvas>
+
+    <script>
+        // --- SETUP ---
+        const canvas = document.getElementById('jellyfish-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        // An array to hold all our jellyfish
+        let jellyfishArray = [];
+
+        // Mouse object to store cursor position and a 'trail' for the custom cursor
+        const mouse = {
+            x: undefined,
+            y: undefined,
+            radius: 150, // The radius of influence to push jellyfish away
+            trail: [] // Array to store past positions for the trail effect
+        };
+
+        // --- CONFIGURATION ---
+        const JELLYFISH_COUNT = 30; // How many jellyfish to create
+        const TENTACLE_SEGMENTS = 15; // How many segments per tentacle
+        const TENTACLE_COUNT = 5; // How many tentacles per jellyfish
+        const CURSOR_TRAIL_LENGTH = 15; // Length of the glowing cursor trail
+
+        // Function to set canvas dimensions
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            // On resize, we might want to re-initialize if the layout changes drastically
+            // For now, a simple resize is fine.
+        }
+
+        // --- MOUSE INTERACTION ---
+        window.addEventListener('mousemove', function(event) {
+            mouse.x = event.x;
+            mouse.y = event.y;
+
+            // Add current position to the trail
+            mouse.trail.push({ x: mouse.x, y: mouse.y });
+            // Keep the trail at a fixed length
+            if (mouse.trail.length > CURSOR_TRAIL_LENGTH) {
+                mouse.trail.shift();
+            }
+        });
+        
+        // Handle mouse leaving the window
+        window.addEventListener('mouseout', function() {
+            mouse.x = undefined;
+            mouse.y = undefined;
+            mouse.trail = [];
+        });
+
+        // --- JELLYFISH CLASS ---
+        class Jellyfish {
+            constructor() {
+                // Positional & Dimensional properties
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.z = Math.random() * 0.6 + 0.4; // Depth (0.4 to 1.0) - for 3D effect
+                
+                this.baseRadius = (Math.random() * 20 + 10);
+                this.radius = this.baseRadius * this.z;
+                
+                // Movement properties
+                this.vx = (Math.random() - 0.5) * 1.5 * this.z;
+                this.vy = (Math.random() - 0.5) * 1.5 * this.z;
+                
+                // Oscillation for soft body effect
+                this.pulseAngle = Math.random() * Math.PI * 2;
+                this.pulseSpeed = Math.random() * 0.02 + 0.01;
+                
+                // Color properties
+                this.hue = Math.random() * 50 + 190; // Hues around blue and purple
+                
+                // Tentacle properties
+                this.tentacles = [];
+                for (let i = 0; i < TENTACLE_COUNT; i++) {
+                    this.tentacles.push(this.createTentacle());
+                }
+            }
+
+            createTentacle() {
+                const tentacle = [];
+                const segmentLength = (this.baseRadius * (Math.random() * 0.8 + 0.5)) / TENTACLE_SEGMENTS;
+                for (let i = 0; i < TENTACLE_SEGMENTS; i++) {
+                    tentacle.push({
+                        x: this.x,
+                        y: this.y + i * segmentLength,
+                        oldX: this.x,
+                        oldY: this.y + i * segmentLength,
+                        length: segmentLength
+                    });
+                }
+                return tentacle;
+            }
+
+            update() {
+                // --- MOUSE INTERACTION ---
+                if (mouse.x !== undefined) {
+                    const dx = this.x - mouse.x;
+                    const dy = this.y - mouse.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < mouse.radius + this.radius) {
+                        const force = (mouse.radius + this.radius - distance) / (mouse.radius + this.radius);
+                        // Push the jellyfish away from the cursor
+                        this.vx += (dx / distance) * force * 1.5;
+                        this.vy += (dy / distance) * force * 1.5;
+                    }
+                }
+
+                // Apply friction/drag to slow down movement
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+
+                // Basic wandering behavior
+                this.vx += (Math.random() - 0.5) * 0.1;
+                this.vy += (Math.random() - 0.5) * 0.1;
+                
+                // Keep speed in check
+                const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                const maxSpeed = 2 * this.z;
+                if (speed > maxSpeed) {
+                    this.vx = (this.vx / speed) * maxSpeed;
+                    this.vy = (this.vy / speed) * maxSpeed;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // --- BOUNDARY CHECK (wrap around screen) ---
+                if (this.x < -this.radius) this.x = width + this.radius;
+                if (this.x > width + this.radius) this.x = -this.radius;
+                if (this.y < -this.radius) this.y = height + this.radius;
+                if (this.y > height + this.radius) this.y = -this.radius;
+
+                // --- UPDATE PULSE ---
+                this.pulseAngle += this.pulseSpeed;
+                this.radius = (this.baseRadius + Math.sin(this.pulseAngle) * this.baseRadius * 0.2) * this.z;
+
+                // --- UPDATE TENTACLES (Verlet Integration) ---
+                this.tentacles.forEach(tentacle => {
+                    // Anchor the first segment to the jellyfish body
+                    const angleOffset = (this.tentacles.indexOf(tentacle) / TENTACLE_COUNT) * Math.PI * 2;
+                    tentacle[0].x = this.x + Math.cos(angleOffset) * this.radius * 0.5;
+                    tentacle[0].y = this.y + Math.sin(angleOffset) * this.radius * 0.5;
+
+                    for (let i = 1; i < tentacle.length; i++) {
+                        const segment = tentacle[i];
+                        // Save current position
+                        const tempX = segment.x;
+                        const tempY = segment.y;
+                        
+                        // Inertia
+                        segment.x += (segment.x - segment.oldX) * 0.95;
+                        segment.y += (segment.y - segment.oldY) * 0.95;
+                        
+                        // Gravity
+                        segment.y += 0.2 * this.z;
+                        
+                        // Update old position
+                        segment.oldX = tempX;
+                        segment.oldY = tempY;
+
+                        // Constraint: connect to previous segment
+                        const prevSegment = tentacle[i - 1];
+                        const dx = segment.x - prevSegment.x;
+                        const dy = segment.y - prevSegment.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const error = dist - segment.length;
+                        const percent = error / dist / 2;
+
+                        segment.x -= dx * percent;
+                        segment.y -= dy * percent;
+                    }
+                });
+            }
+
+            draw() {
+                // --- DRAW TENTACLES FIRST (so they are behind the bell) ---
+                this.tentacles.forEach(tentacle => {
+                    ctx.beginPath();
+                    ctx.moveTo(tentacle[0].x, tentacle[0].y);
+                    for (let i = 1; i < tentacle.length - 1; i++) {
+                        // Use quadratic curve for smoother lines
+                        const xc = (tentacle[i].x + tentacle[i + 1].x) / 2;
+                        const yc = (tentacle[i].y + tentacle[i + 1].y) / 2;
+                        ctx.quadraticCurveTo(tentacle[i].x, tentacle[i].y, xc, yc);
+                    }
+                    ctx.lineWidth = 1.5 * this.z;
+                    ctx.strokeStyle = `hsla(${this.hue}, 80%, 60%, ${0.5 * this.z})`;
+                    ctx.stroke();
+                });
+
+
+                // --- DRAW JELLYFISH BELL ---
+                ctx.beginPath();
+                
+                // Create a radial gradient for a 3D glow effect
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y - this.radius * 0.5, this.radius * 0.2, // Inner circle (highlight)
+                    this.x, this.y, this.radius // Outer circle
+                );
+                gradient.addColorStop(0, `hsla(${this.hue}, 100%, 80%, ${0.8 * this.z})`);
+                gradient.addColorStop(0.5, `hsla(${this.hue}, 90%, 60%, ${0.6 * this.z})`);
+                gradient.addColorStop(1, `hsla(${this.hue}, 80%, 50%, 0)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // --- CURSOR DRAW FUNCTION ---
+        function drawCursor() {
+            if (mouse.x === undefined || mouse.trail.length === 0) return;
+
+            // Draw the trail
+            for (let i = mouse.trail.length - 1; i > 0; i--) {
+                const point = mouse.trail[i];
+                const prevPoint = mouse.trail[i - 1];
+                const alpha = i / mouse.trail.length; // Fade out along the trail
+
+                ctx.beginPath();
+                ctx.moveTo(prevPoint.x, prevPoint.y);
+                ctx.lineTo(point.x, point.y);
+                ctx.strokeStyle = `rgba(200, 255, 255, ${alpha * 0.5})`;
+                ctx.lineWidth = i / mouse.trail.length * 5; // Taper the trail
+                ctx.stroke();
+            }
+
+            // Draw the main cursor glow
+            const cursorGradient = ctx.createRadialGradient(mouse.x, mouse.y, 5, mouse.x, mouse.y, 25);
+            cursorGradient.addColorStop(0, 'rgba(220, 255, 255, 0.8)');
+            cursorGradient.addColorStop(1, 'rgba(220, 255, 255, 0)');
+            ctx.fillStyle = cursorGradient;
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+
+        // --- INITIALIZATION ---
+        function init() {
+            jellyfishArray = [];
+            for (let i = 0; i < JELLYFISH_COUNT; i++) {
+                jellyfishArray.push(new Jellyfish());
+            }
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            // Use a semi-transparent background to create a motion blur/fading trail effect
+            ctx.fillStyle = 'rgba(0, 5, 26, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Sort jellyfish by depth so that ones "in front" are drawn last
+            jellyfishArray.sort((a, b) => a.z - b.z);
+
+            jellyfishArray.forEach(jelly => {
+                jelly.update();
+                jelly.draw();
+            });
+            
+            drawCursor();
+
+            // Loop the animation
+            requestAnimationFrame(animate);
+        }
+
+        // --- START ---
+        // Add resize listener
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Initial setup
+        resizeCanvas();
+        init();
+        animate();
+    </script>
+</body>
+</html>
