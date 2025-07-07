@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Sequence Stream</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            position: relative;
+        }
+
+        .dna-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: 
+                radial-gradient(circle at 30% 20%, rgba(0, 255, 100, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(0, 200, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(255, 0, 100, 0.03) 0%, transparent 60%),
+                #000;
+            animation: backgroundShift 10s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(30deg); }
+        }
+
+        .dna-column {
+            position: absolute;
+            top: 0;
+            writing-mode: vertical-lr;
+            text-orientation: upright;
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1.2;
+            white-space: nowrap;
+            pointer-events: none;
+            text-shadow: 0 0 5px currentColor;
+        }
+
+        .base-a {
+            color: #00ff41;
+            text-shadow: 0 0 8px #00ff41;
+        }
+
+        .base-t {
+            color: #ff0080;
+            text-shadow: 0 0 8px #ff0080;
+        }
+
+        .base-c {
+            color: #0080ff;
+            text-shadow: 0 0 8px #0080ff;
+        }
+
+        .base-g {
+            color: #ffff00;
+            text-shadow: 0 0 8px #ffff00;
+        }
+
+        .highlighted-sequence {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            padding: 2px;
+            animation: sequenceHighlight 2s ease-in-out;
+        }
+
+        @keyframes sequenceHighlight {
+            0% { 
+                background: rgba(255, 255, 255, 0.3);
+                box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+                transform: scale(1.1);
+            }
+            50% { 
+                background: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+                transform: scale(1.05);
+            }
+            100% { 
+                background: rgba(255, 255, 255, 0.1);
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+                transform: scale(1);
+            }
+        }
+
+        .special-sequence {
+            color: #ff6b35 !important;
+            text-shadow: 0 0 12px #ff6b35 !important;
+            background: rgba(255, 107, 53, 0.2);
+            border-radius: 3px;
+            padding: 2px;
+            animation: specialGlow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes specialGlow {
+            0% { 
+                box-shadow: 0 0 10px rgba(255, 107, 53, 0.6);
+                transform: scale(1);
+            }
+            100% { 
+                box-shadow: 0 0 20px rgba(255, 107, 53, 0.8);
+                transform: scale(1.05);
+            }
+        }
+
+        .rare-sequence {
+            color: #ff00ff !important;
+            text-shadow: 0 0 15px #ff00ff !important;
+            background: rgba(255, 0, 255, 0.2);
+            border-radius: 3px;
+            padding: 2px;
+            animation: rareGlow 1s ease-in-out infinite;
+        }
+
+        @keyframes rareGlow {
+            0%, 100% { 
+                box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 25px rgba(255, 0, 255, 1);
+                transform: scale(1.1);
+            }
+        }
+
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff41;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff41;
+            z-index: 100;
+            animation: titlePulse 3s ease-in-out infinite;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #00ff41;
+            font-size: 12px;
+            opacity: 0.7;
+            z-index: 100;
+            line-height: 1.5;
+        }
+
+        .sequence-counter {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            color: #00ff41;
+            font-size: 14px;
+            z-index: 100;
+            text-align: right;
+        }
+
+        @media (max-width: 768px) {
+            .dna-column {
+                font-size: 12px;
+            }
+            
+            .title {
+                font-size: 18px;
+            }
+            
+            .info-panel {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dna-container">
+        <div class="title">DNA SEQUENCE STREAM</div>
+        <div class="sequence-counter">
+            <div>Sequences Found: <span id="sequenceCount">0</span></div>
+            <div>Special Genes: <span id="specialCount">0</span></div>
+            <div>Rare Mutations: <span id="rareCount">0</span></div>
+        </div>
+        <div class="info-panel">
+            <div><span style="color: #00ff41;">A</span> - Adenine</div>
+            <div><span style="color: #ff0080;">T</span> - Thymine</div>
+            <div><span style="color: #0080ff;">C</span> - Cytosine</div>
+            <div><span style="color: #ffff00;">G</span> - Guanine</div>
+            <div style="margin-top: 10px; color: #ff6b35;">Orange: Gene Sequences</div>
+            <div style="color: #ff00ff;">Magenta: Rare Mutations</div>
+        </div>
+    </div>
+
+    <script>
+        class DNAStream {
+            constructor() {
+                this.container = document.querySelector('.dna-container');
+                this.bases = ['A', 'T', 'C', 'G'];
+                this.columns = [];
+                this.sequenceCount = 0;
+                this.specialCount = 0;
+                this.rareCount = 0;
+                
+                // Known gene sequences and patterns
+                this.geneSequences = [
+                    'GATTACA', 'ATCGATCG', 'TACGTA', 'CGATCG',
+                    'AATTCC', 'GGCCTT', 'TTAAGC', 'CCGGAA',
+                    'ATGCTA', 'GCATGC', 'TAGCTA', 'CTAG'
+                ];
+                
+                this.rareMutations = [
+                    'AAAAAAA', 'TTTTTTT', 'CCCCCCC', 'GGGGGGG',
+                    'ATATATATA', 'CGCGCGCG', 'ACGTACGT'
+                ];
+                
+                this.init();
+            }
+
+            init() {
+                this.createColumns();
+                this.startAnimation();
+                this.updateCounters();
+            }
+
+            createColumns() {
+                const columnWidth = 20;
+                const numColumns = Math.ceil(window.innerWidth / columnWidth);
+                
+                for (let i = 0; i < numColumns; i++) {
+                    this.createColumn(i * columnWidth);
+                }
+            }
+
+            createColumn(x) {
+                const column = {
+                    element: document.createElement('div'),
+                    x: x,
+                    speed: Math.random() * 3 + 2,
+                    length: Math.random() * 30 + 20,
+                    bases: [],
+                    y: -Math.random() * 500
+                };
+
+                column.element.className = 'dna-column';
+                column.element.style.left = x + 'px';
+                column.element.style.transform = `translateY(${column.y}px)`;
+                
+                this.generateBases(column);
+                this.container.appendChild(column.element);
+                this.columns.push(column);
+            }
+
+            generateBases(column) {
+                column.bases = [];
+                let sequence = '';
+                
+                for (let i = 0; i < column.length; i++) {
+                    const base = this.bases[Math.floor(Math.random() * this.bases.length)];
+                    column.bases.push(base);
+                    sequence += base;
+                }
+                
+                this.renderColumn(column, sequence);
+            }
+
+            renderColumn(column, sequence) {
+                let html = '';
+                
+                for (let i = 0; i < column.bases.length; i++) {
+                    const base = column.bases[i];
+                    const baseClass = `base-${base.toLowerCase()}`;
+                    
+                    // Check for special sequences
+                    const remainingSequence = sequence.substring(i);
+                    let specialClass = '';
+                    let sequenceLength = 1;
+                    
+                    // Check for rare mutations first (higher priority)
+                    for (const rare of this.rareMutations) {
+                        if (remainingSequence.startsWith(rare)) {
+                            specialClass = 'rare-sequence';
+                            sequenceLength = rare.length;
+                            this.rareCount++;
+                            break;
+                        }
+                    }
+                    
+                    // Check for gene sequences if no rare mutation found
+                    if (!specialClass) {
+                        for (const gene of this.geneSequences) {
+                            if (remainingSequence.startsWith(gene)) {
+                                specialClass = 'special-sequence';
+                                sequenceLength = gene.length;
+                                this.specialCount++;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Random highlighting for other sequences
+                    if (!specialClass && Math.random() < 0.05) {
+                        specialClass = 'highlighted-sequence';
+                        sequenceLength = Math.min(5, column.bases.length - i);
+                        this.sequenceCount++;
+                    }
+                    
+                    if (specialClass && sequenceLength > 1) {
+                        // Render the entire sequence as one highlighted block
+                        const sequenceText = sequence.substring(i, i + sequenceLength);
+                        html += `<span class="${specialClass}">${sequenceText}</span>`;
+                        i += sequenceLength - 1; // Skip the rendered bases
+                    } else {
+                        html += `<span class="${baseClass}">${base}</span>`;
+                    }
+                }
+                
+                column.element.innerHTML = html;
+            }
+
+            startAnimation() {
+                const animate = () => {
+                    this.columns.forEach(column => {
+                        column.y += column.speed;
+                        
+                        if (column.y > window.innerHeight) {
+                            column.y = -column.length * 20;
+                            this.generateBases(column);
+                        }
+                        
+                        column.element.style.transform = `translateY(${column.y}px)`;
+                    });
+                    
+                    requestAnimationFrame(animate);
+                };
+                
+                animate();
+            }
+
+            updateCounters() {
+                setInterval(() => {
+                    document.getElementById('sequenceCount').textContent = this.sequenceCount;
+                    document.getElementById('specialCount').textContent = this.specialCount;
+                    document.getElementById('rareCount').textContent = this.rareCount;
+                }, 1000);
+            }
+        }
+
+        // Initialize the DNA stream
+        document.addEventListener('DOMContentLoaded', () => {
+            new DNAStream();
+        });
+
+        // Add mouse interaction
+        document.addEventListener('mousemove', (e) => {
+            const columns = document.querySelectorAll('.dna-column');
+            const mouseX = e.clientX;
+            
+            columns.forEach((column, index) => {
+                const columnX = parseInt(column.style.left);
+                const distance = Math.abs(mouseX - columnX);
+                const influence = Math.max(0, 100 - distance) / 100;
+                
+                if (influence > 0) {
+                    column.style.filter = `brightness(${1 + influence * 0.5}) blur(${influence * 2}px)`;
+                } else {
+                    column.style.filter = 'none';
+                }
+            });
+        });
+
+        // Click to generate special sequence burst
+        document.addEventListener('click', (e) => {
+            const columns = document.querySelectorAll('.dna-column');
+            const clickX = e.clientX;
+            
+            columns.forEach(column => {
+                const columnX = parseInt(column.style.left);
+                const distance = Math.abs(clickX - columnX);
+                
+                if (distance < 100) {
+                    // Force a special sequence to appear
+                    setTimeout(() => {
+                        const bases = ['A', 'T', 'C', 'G'];
+                        const specialSequence = 'GATTACA'; // Famous sequence from the movie
+                        let html = '';
+                        
+                        for (let i = 0; i < 20; i++) {
+                            if (i < specialSequence.length) {
+                                html += `<span class="rare-sequence">${specialSequence[i]}</span>`;
+                            } else {
+                                const base = bases[Math.floor(Math.random() * bases.length)];
+                                html += `<span class="base-${base.toLowerCase()}">${base}</span>`;
+                            }
+                        }
+                        
+                        column.innerHTML = html;
+                    }, Math.random() * 500);
+                }
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') {
+                // Spacebar: Generate burst of special sequences
+                const columns = document.querySelectorAll('.dna-column');
+                columns.forEach((column, index) => {
+                    setTimeout(() => {
+                        const geneSequences = ['GATTACA', 'ATCGATCG', 'TACGTA', 'CGATCG'];
+                        const randomGene = geneSequences[Math.floor(Math.random() * geneSequences.length)];
+                        let html = `<span class="special-sequence">${randomGene}</span>`;
+                        
+                        const bases = ['A', 'T', 'C', 'G'];
+                        for (let i = 0; i < 15; i++) {
+                            const base = bases[Math.floor(Math.random() * bases.length)];
+                            html += `<span class="base-${base.toLowerCase()}">${base}</span>`;
+                        }
+                        
+                        column.innerHTML = html;
+                    }, index * 50);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
