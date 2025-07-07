@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Rain</title>
+    <style>
+        /* Basic reset to make the canvas fill the screen */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="binary-canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('binary-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas to fill the window
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // The characters for our rain are just 0 and 1
+        const characters = '01';
+        const charactersArray = characters.split('');
+        const skullEmoji = '💀';
+
+        const fontSize = 16;
+        const columns = Math.floor(canvas.width / fontSize);
+
+        // Each drop is an object with its position and properties
+        const drops = [];
+        function initializeDrops() {
+            drops.length = 0; // Clear existing drops
+            const numColumns = Math.floor(canvas.width / fontSize);
+            for (let x = 0; x < numColumns; x++) {
+                drops[x] = {
+                    y: Math.random() * canvas.height,
+                    speed: Math.random() * 3 + 1, // Speed between 1 and 4
+                    isGlitching: false,
+                    glitchCounter: 0
+                };
+            }
+        }
+
+        initializeDrops(); // Initial setup
+
+        function draw() {
+            // Use a semi-transparent black rectangle to create the fading trail effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Set the font for the binary characters
+            ctx.font = `${fontSize}px 'Courier New', monospace`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const drop = drops[i];
+                const x = i * fontSize;
+                const y = drop.y;
+
+                // --- TWIST #2: The Skull Glitch ---
+                if (drop.isGlitching) {
+                    // If the drop is in a "glitch" state, draw a red skull
+                    ctx.fillStyle = '#ff3333'; // Bright, alarming red
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#ff0000';
+                    ctx.fillText(skullEmoji, x, y);
+
+                    // Decrease the glitch counter and turn it off when it reaches zero
+                    drop.glitchCounter--;
+                    if (drop.glitchCounter <= 0) {
+                        drop.isGlitching = false;
+                        ctx.shadowBlur = 0; // Reset shadow
+                    }
+                } else {
+                    // --- Normal Binary Rain ---
+                    const text = charactersArray[Math.floor(Math.random() * charactersArray.length)];
+
+                    // Draw the trail character in a standard green
+                    ctx.fillStyle = '#008000'; // Dark Green
+                    ctx.fillText(text, x, y);
+
+                    // --- TWIST #1: The Bright Leader ---
+                    // Overdraw the same character with a brighter color to make it the "leader"
+                    ctx.fillStyle = '#66ff66'; // Bright Lime Green
+                    ctx.fillText(text, x, y);
+                }
+
+
+                // Logic for moving the drop and resetting it
+                if (y > canvas.height && Math.random() > 0.98) {
+                    // Reset the drop to the top with a new random speed
+                    drop.y = 0;
+                    drop.speed = Math.random() * 3 + 1;
+                } else {
+                    // Move the drop down by its speed
+                    drop.y += drop.speed;
+                }
+
+                // Randomly trigger a new glitch in a stream that is not already glitching
+                if (!drop.isGlitching && Math.random() > 0.9995) { // Make this very rare
+                    drop.isGlitching = true;
+                    drop.glitchCounter = Math.floor(Math.random() * 20) + 10; // Glitch lasts for 10-30 frames
+                }
+            }
+        }
+
+        // Start the animation loop (running at ~30 frames per second)
+        setInterval(draw, 33);
+
+        // Handle window resizing to make the wallpaper responsive
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // Re-initialize the drops array for the new number of columns
+            initializeDrops();
+        });
+    </script>
+</body>
+</html>
